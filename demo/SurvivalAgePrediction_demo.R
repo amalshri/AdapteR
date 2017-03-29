@@ -123,3 +123,22 @@ p5 <- plot_ly(l) %>%
   layout(title="Life expectancy predictive model")
 p5
 
+## plotting differences between predicted age and actual age
+
+###Amal: tbl$`-1` doesn't work
+ret<-sqlQuery(getFLConnection(),"Select obsid, num_val from tbl11 where varid = -1 order by 1")
+ret2<-ret[,2]
+l<-data.frame(ret2 - pred2, vmap2)
+colnames(l)<-c("PredictedAgeDifference","CountryNames")
+p5 <- plot_ly(l) %>%
+  add_trace(
+    z = l$PredictedAgeDifference,
+    text= paste('Country:',l$CountryNames,
+                '</br> Predicted Life expectancy:',l$PredictedAgeDifference),
+    locations = l$CountryNames,
+    type = "choropleth",locationmode="country names",
+    filename="choropleth/world",title="Life expectancy prediction",
+    hoverinfo="text") %>%
+  layout(title="Life expectancy predictive model")
+p5
+
