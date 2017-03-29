@@ -1,4 +1,3 @@
-## http://people.inf.elte.hu/kiss/11dwhdm/roc.pdf
 
 #' @export
 roc <- function (formula,data=list(),...) {
@@ -14,7 +13,6 @@ roc.default <- function (response, predictor,...) {
    else return(pROC::roc(response, predictor,...))
 }
 
-##to-do : print function, $ operator[(levels)].
 
 
 #' @export
@@ -23,34 +21,34 @@ setClass(
     contains="FLRegr",
     slots=list(otbl="character"))
 
+## http://people.inf.elte.hu/kiss/11dwhdm/roc.pdf
 #' tbl <- FLTable("tblROCCurve", "ObsID")
 #' mod <- roc(tbl$ActualVal, tbl$ProbVal)
-#'Example 2:
+#' Example 2:
 #' data(aSAH)
-#'fltbl <- data.frame(res = aSAH$outcome, pred = aSAH$s100b)
-#'fltbl$res <- as.numeric(fltbl$res)
-#'fltbl$res <- fltbl$res - 1
+#' fltbl <- data.frame(res = aSAH$outcome, pred = aSAH$s100b)
+#' fltbl$res <- as.numeric(fltbl$res)
+#' fltbl$res <- fltbl$res - 1
 #' fltbl <- fltbl[-55, ]
 #' head(fltbl)
-#'fltbl <- as.FLTable(fltbl)
-#'flmod <- roc(fltbl$res, fltbl$pred)
-
+#' fltbl <- as.FLTable(fltbl)
+#' flmod <- roc(fltbl$res, fltbl$pred)
 #' @export
 roc.FLVector <- function (response, predictor, ...)
 {
     vcallObject <- match.call()
-    if(!is.FLVector(predictor))
-    {predictor <- as.FL(predictor)}
+ ##   if(!is.FLVector(predictor))
+ ##   {predictor <- as.FL(predictor)}
     return(rocgeneric(response = response,
                       predictor = predictor,
                       callobject = vcallObject,
                       ...))}
 
 
-#' @export
 #' TO-DO:- implementation in rocgeneric
 #' roctbl <- FLTable("tblROCcurve", obs_id_colname = "ObsID")
 #' rocmod <- roc.FLTable(ActualVal~ProbVal, data = roctbl)
+#' @export
 roc.FLTable <- function(formula,data,... ){
     vcallObject <- match.call()
     var <- all.vars(formula)
@@ -88,17 +86,23 @@ roc.FLTable <- function(formula,data,... ){
 
 rocgeneric <- function(response, predictor,callobject,  ...)
 {
+    predCol <- "vectorValueColumn"
+    predObs <- "vectorIndexColumn"
     vvolName <- gen_view_name("roccurve")
-    vselect <- paste0(" SELECT a.vectorIndexColumn AS OBSID, a.vectorValueColumn as res, b.vectorValueColumn AS pred
+    if(strsplit(class(predictor), split = ".", fixed = TRUE)[[1]][1] == "FLMatrix"){
+        predCol <- "valueColumn"
+        predObs <- "rowIdColumn" }
+    
+    vselect <- paste0(" SELECT a.vectorIndexColumn AS OBSID, a.vectorValueColumn as res, b.",predCol," AS pred
                           FROM (",constructSelect(response),") AS a ,
                                (",constructSelect(predictor),") AS b
-                          WHERE  a.vectorIndexColumn = b.vectorIndexColumn")
+                          WHERE  a.vectorIndexColumn = b.",predObs,"")
     tbl <- createTable(pTableName = vvolName,
                        pWithData = TRUE,
                        pTemporary = TRUE,
                        pSelect = vselect )
-    vrw <- nrow(predictor)
-    rnames <- rownames(predictor)
+    vrw <- nrow(response)
+    rnames <- rownames(response)
     cnames <- c("ObsID", colnames(response), colnames(predictor))
     ret <- sqlStoredProc(connection,
                          "FLROCCurve",
@@ -172,7 +176,6 @@ rocgeneric <- function(response, predictor,callobject,  ...)
         return(auc(object)) }
     
     else if(property == "original.predictor"){
-        browser()
         return(flvgeneric(object,
                           tblname = object@results$itable,
                           var = list(object@results$doperator$Var[[2]]),
@@ -249,7 +252,9 @@ plot.FLROC <- function(object,limit = 1000,method = 1, ...)
 print.FLROC <- function(object,method = 1, ...) 
     return(print(as.roc(object, auc=TRUE,method = method, ...)))
 
+setMethod("show", signature("FLROC"), function(x) print.FLROC(x,method=0))
 
+#' @export
 as.roc <- function(object,limit = 1000, auc=TRUE,method = 1, ... ){
     p <- min(limit,object@results$dims[[1]])/(object@results$dims[[1]])
     if(method)
@@ -257,9 +262,7 @@ as.roc <- function(object,limit = 1000, auc=TRUE,method = 1, ... ){
         vfrom1 <- gsub("ORDER BY FPR DESC", "", constructSelect(object$specificities))
         vfrom2 <- gsub("ORDER BY TPR","", constructSelect(object$sensitivities) )
         str1 <- paste0("SELECT  b.spec AS spec, a.sen AS sen FROM (",vfrom1,") AS b, (",vfrom2,") AS a WHERE a.ObSID = b.ObsID AND FLSimUniform(RANDOM(1,10000), 0.0, 1.0) < ",p," ")
-    }
-    else
-    {
+    } else {
         val <- object@results$vals
         neg <-1/val[[1]]
         pos <- 1/val[[2]]
@@ -282,4 +285,3 @@ as.roc <- function(object,limit = 1000, auc=TRUE,method = 1, ... ){
     return(reqList)
 }
 
-##setMethod("show","FLROC",print.FLROC)
