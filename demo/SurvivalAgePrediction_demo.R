@@ -48,12 +48,15 @@ p5
 
 ### Use case in FL environment
 
+## Connection setup
+connection <- flConnect(odbcSource = "Gandalf",database = "FLRev_4878",platform="TD",pkg = "dbc")
+
 ## getting the table name
 vtableName <- "FL_Demo.medeconomicdataAmal"
 
 ## selecting a few indicators with maximum countries in common
 
-indi<-sqlQuery(connection,"select count(countryname) as xyz, indicatorcode from medEconomicDataAmal where years=2010 group by indicatorcode")
+indi<-sqlQuery(connection,"select count(countryname) as xyz, indicatorcode from FL_Demo.medEconomicDataAmal where years=2010 group by indicatorcode")
 indicat<-indi[indi$xyz>200,2]
 
 ## constructing a deep table for decision tree implementation
@@ -72,7 +75,7 @@ resultList <- FLReshape(data=vtableName,
                         dependentColumn='SP.DYN.LE00.IN',
                         drop=TRUE)
 tbl<-resultList$table
-
+head(tbl)
 ## mapping tables for metadata
 
 vmap1<-sqlQuery(connection,"select varid, varidnames from tbl11  where obsid=1 order by 1,2")
@@ -80,6 +83,7 @@ vmap2<-sqlQuery(connection,"select distinct(obsidnames) from tbl11 order by 1")
 
 colnames(vmap2)<-"CountryNames"
 
+## indicator name mapping(requires the data csv)
 sub<-rdata[rdata$IndicatorCode == c('SH.ANM.NPRG.ZS','SH.DYN.NMRT','SP.URB.TOTL','SL.TLF.CACT.ZS',
                                     'NY.GNP.PCAP.PP.CD','SP.POP.DPND.OL','SM.POP.REFG.OR','AG.LND.FRST.ZS',
                                     'SH.H2O.SAFE.ZS','NY.ADJ.AEDU.GN.ZS','SP.RUR.TOTL','EG.NSF.ACCS.ZS',
@@ -94,14 +98,15 @@ vmap3<-data.frame(a,b)
 
 ## running regression tree on the table
 
-flobj<-rtree(tbl, formula = -1~.)
+flobj<-rtree(tbl, formula = -1~., ntree=12)
 flobj
 plot(flobj)
 
 ## prediction from the decision tree model(Sometimes requires dropping tables fzzlRegrTreePath and fzzlRegrTreeNodes)
 pred<-predict(flobj)
+
 ## aggregate mean for prediction values
-pred2<-aggregate(pred[,6], list(pred$ObsID), mean)
+pred2<-rowMeans(pred)
 colnames(pred2)<-c("Group","PredictedAge")
 
 ## plotting predictions on world map
