@@ -1135,19 +1135,25 @@ FLReshape <- function(data,formula,
         }
         ## TODO: standardization of data
 
-        vres <- sqlQuery(getFLConnection(),
-                        paste0("SELECT MAX(obsid) as vrows, MAX(varid) as vcols FROM ",outTable))
-        rows <- vres[["vrows"]]
-        cols <- vres[["vcols"]]
+        # vres <- sqlQuery(getFLConnection(),
+        #                 paste0("SELECT MAX(obsid) as vrows, MAX(varid) as vcols FROM ",outTable))
+        # rows <- vres[["vrows"]]
+        # cols <- vres[["vcols"]]
 
         sqlQuery(getFLConnection(),paste0("Update ",outTable," set varid = -1 Where varidnames = ",fquote(list(...)$dependentColumn)))
 
+        rows <- sqlQuery(getFLConnection(),
+                          paste0("SELECT DISTINCT obsid FROM ",outTable," ORDER BY 1"))
+        cols <- sqlQuery(getFLConnection(),
+                          paste0("SELECT DISTINCT varid FROM ",outTable," ORDER BY 1"))
+        rows<-rows[,1]
+        cols<-cols[,1]
         ## Mappings
         sqlstr <- paste0("SELECT DISTINCT '%insertIDhere%' AS vectorIdColumn, \n ",
                             " ROW_NUMBER()OVER(PARTITION BY varid ORDER BY obsid) AS vectorIndexColumn, \n ",
                             " obsidnames AS vectorValueColumn \n ",
                         " FROM ",outTable)
-
+        
         tblfunqueryobj <- new("FLTableFunctionQuery",
                                   connectionName = attr(getFLConnection(),"name"),
                                   variables = list(
@@ -1158,7 +1164,7 @@ FLReshape <- function(data,formula,
                                   SQLquery=sqlstr)
         Rownames <- newFLVector(
                        select = tblfunqueryobj,
-                       Dimnames = list(1:rows,"vectorValueColumn"),
+                       Dimnames = list(rows,"vectorValueColumn"),
                        isDeep = FALSE,
                        type="character")
 
@@ -1177,7 +1183,7 @@ FLReshape <- function(data,formula,
                                   SQLquery=sqlstr)
         Colnames <- newFLVector(
                        select = tblfunqueryobj,
-                       Dimnames = list(1:cols,"vectorValueColumn"),
+                       Dimnames = list(cols,"vectorValueColumn"),
                        isDeep = FALSE,
                        type="character")
 
@@ -1195,7 +1201,7 @@ FLReshape <- function(data,formula,
         
         deepTable <- newFLTable(
                         select = select,
-                        Dimnames = list(1:rows,1:cols),
+                        Dimnames = list(rows,cols),
                         dims = as.integer(c(rows,cols)),
                         isDeep = TRUE,
                         type="double",
