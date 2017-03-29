@@ -107,10 +107,10 @@ pred<-predict(flobj)
 
 ## aggregate mean for prediction values
 pred2<-rowMeans(pred)
-colnames(pred2)<-c("Group","PredictedAge")
 
 ## plotting predictions on world map
 l<-data.frame(pred2, vmap2)
+colnames(l)<-c("PredictedAge","CountryNames")
 p5 <- plot_ly(l) %>%
   add_trace(
     z = l$PredictedAge,
