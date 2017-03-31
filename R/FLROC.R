@@ -134,6 +134,15 @@ rocgeneric <- function(response, predictor,callobject,  ...)
 }
 
 
+setMethod("names", signature("FLROC"), function(object) c("sensitivities","specificities",
+                                                          "original.predictor","original.response",
+                                                          "levels",
+                                                          "controls","cases",
+                                                          "call",
+                                                          "percent"
+                                                          ))
+
+          
 #' @export
 `$.FLROC`<-function(object,property){
     parentObject <- unlist(strsplit(unlist(strsplit(as.character(sys.call()),"(",fixed=T))[2],",",fixed=T))[1]
@@ -175,13 +184,15 @@ rocgeneric <- function(response, predictor,callobject,  ...)
     else if(property == "auc") {
         return(auc(object)) }
     
+    ## dname <- c(object@results$doperator$Vorder, object@results$doperator$Var[[2]])
+    
     else if(property == "original.predictor"){
         return(flvgeneric(object,
                           tblname = object@results$itable,
-                          var = list(object@results$doperator$Var[[2]]),
+                          var = list(OBSID= "ObsID", pred = object@results$doperator$Var[[2]]),
                           whereconditions = "" ,
                           vorder = object@results$doperator$Vorder,
-                          dcolumn = c(object@results$doperator$Vorder, object@results$doperator$Var[[2]])))
+                          dcolumn =c("OBSID", "pred") ))
     }
     ## var <- res, vorder <- "obsId", dcolumn <-c("obsID",res)
     else if(property == "original.response"){
@@ -192,15 +203,15 @@ rocgeneric <- function(response, predictor,callobject,  ...)
                           vorder = object@results$doperator$Vorder,
                           dcolumn = c(object@results$doperator$Vorder,object@results$doperator$Var[[1]] ))) }
 
-    else if(property == "levels"){print("need to do:")}
+    else if(property == "levels"){ return(0:1)} ## need to generalize
 
     else if(property == "controls"){
         return(flvgeneric(object,
                           tblname = object@results$itable,
-                          var = list(object@results$doperator$Var[[2]]),
+                          var = list(OBSID = "ObsID", controls = object@results$doperator$Var[[2]]),
                           whereconditions = paste0(object@results$doperator$Var[[1]], "= 0"),
                           vorder = object@results$doperator$Vorder,
-                          dcolumn = c(object@results$doperator$Vorder, object@results$doperator$Var[[2]]),
+                          dcolumn = c("OBSID", "controls"),
                           dnames = (1:object@results$vals[1]),
                           vdims  = object@results$vals[1]
                           ))
@@ -209,10 +220,10 @@ rocgeneric <- function(response, predictor,callobject,  ...)
     else if(property == "cases"){
         return(flvgeneric(object,
                           tblname = object@results$itable,
-                          var = list(object@results$doperator$Var[[2]]),
+                          var = list(OBSID = "ObsID", cases = object@results$doperator$Var[[2]]),
                           whereconditions = paste0(object@results$doperator$Var[[1]], "= 1"),
                           vorder = object@results$doperator$Vorder,
-                          dcolumn = c(object@results$doperator$Vorder, object@results$doperator$Var[[2]]),
+                          dcolumn = c("OBSID", "cases"),
                           dnames = (1:object@results$vals[2]),
                           vdims  = object@results$vals[2]))
     }
@@ -248,11 +259,55 @@ auc.FLROC <- function(object,limit = 1000,...)
 plot.FLROC <- function(object,limit = 1000,method = 1, ...) 
     return(plot(as.roc(object, limit=limit, method = method), ...))
 
-#' @export
-print.FLROC <- function(object,method = 1, ...) 
-    return(print(as.roc(object, auc=TRUE,method = method, ...)))
+## from package pROC
+print.roc.dataline <- function (x) 
+{
+    if ("cases" %in% names(x$call) && "controls" %in% names(x$call)) {
+        cat("Data: ", length(x$controls), " controls ", x$direction, 
+            " ", length(x$cases), " cases.\n", sep = "")
+    }
+    else {
+        if ("predictor" %in% names(x$call)) 
+            predictor.name <- as.character(x$call[match("predictor", 
+                names(x$call))])
+        else if (!is.null(x$call$formula)) 
+            predictor.name <- attr(terms(as.formula(x$call$formula)), 
+                "term.labels")
+        else return()
+        if ("response" %in% names(x$call)) 
+            response.name <- as.character(x$call[match("response", 
+                names(x$call))])
+        else if (!is.null(x$call$formula)) {
+            formula.attrs <- attributes(terms(as.formula(x$call$formula)))
+            response.name <- rownames(formula.attrs$factors)[formula.attrs$response]
+        }
+        else if ("x" %in% names(x$call)) 
+            response.name <- as.character(x$call[match("x", names(x$call))])
+        else return()
+        cat("Data: ", predictor.name, " in ", length(x$controls), 
+            " controls (", response.name, " ", x$levels[1], ") ", 
+            x$direction, " ", length(x$cases), " cases (", response.name, 
+            " ", x$levels[2], ").\n", sep = "")
+    }
+}
 
-setMethod("show", signature("FLROC"), function(x) print.FLROC(x,method=0))
+## from package pROC
+#' @export
+print.FLROC <- function(x,method = 1, digits = max(3, getOption("digits") - 3), call = TRUE, ...) {
+    if (call) 
+        cat("\nCall:\n", deparse(x$call), "\n\n", sep = "")
+    print.roc.dataline(x)
+    if (!is.null(x$auc)) {
+        print(x$auc, digits = digits, ...)
+    }
+    else cat("Area under the curve not computed.\n")
+    if (!is.null(x$ci)) {
+        print(x$ci, digits = digits, ...)
+    }
+    invisible(x)
+}
+
+setMethod("show", signature("FLROC"), function(object) print.FLROC(object,method=0))
 
 #' @export
 as.roc <- function(object,limit = 1000, auc=TRUE,method = 1, ... ){
@@ -274,11 +329,12 @@ as.roc <- function(object,limit = 1000, auc=TRUE,method = 1, ... ){
 
     reqList <- structure(
         list(call = object$call,
-             #cases = object$cases,
-             #controls = object$controls,
+             cases = object$cases,
+             controls = object$controls,
              percent = object$percent,
              sensitivities =sen,
-             specificities = spec
+             specificities = spec,
+             levels=0:1
              ),
         class="roc")
     if(auc) reqList$auc <- auc(reqList)

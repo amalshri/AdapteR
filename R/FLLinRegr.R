@@ -925,7 +925,7 @@ prepareData.FLRegr <- function(formula, data, outDeepTableName="",
     dataCopy <- data
     vRegrDataPrepSpecs <- setDefaultsRegrDataPrepSpecs(x=formula@RegrDataPrepSpecs,
                                                        values=list(...))
-    deepx <- FLRegrDataPrep(data,depCol=vRegrDataPrepSpecs$depCol,
+    deepx <- FLRegrDataPrep(data,depCol=formula@RegrDataPrepSpecs$depCol,
                             OutDeepTable=outDeepTableName,
                             OutObsIDCol=vRegrDataPrepSpecs$outObsIDCol,
                             OutVarIDCol=vRegrDataPrepSpecs$outVarIDCol,
@@ -1211,8 +1211,7 @@ prepareData.formula <- function(formula,data,
                                 WhereClause=whereconditions,
                                 InAnalysisID="",
                                 fetchIDs=fetchIDs)
-
-        vRegrDataPrepSpecs <- list(outDeepTableName=outDeepTableName,
+            vRegrDataPrepSpecs <- list(
                                 outObsIDCol="obsid",
                                 outVarIDCol="varid",
                                 outValueCol="numval",
@@ -2359,7 +2358,7 @@ print.FLLinRegrMD <- summary.FLLinRegrMD
 }
 setDefaultsRegrDataPrepSpecs <- function(x,values){
     x <- as.list(x)
-    for(i in c("catToDummy","performNorm",
+    for(i in c("depCol", "catToDummy","performNorm",
                 "performVarReduc","minStdDev",
                 "maxCorrel","makeDataSparse",
                 "excludeCols","classSpec")){
