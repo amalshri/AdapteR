@@ -1115,6 +1115,8 @@ prepareData.formula <- function(formula,data,
                               limitRowsSQL(paste0("SELECT * FROM (",
                                                   constructSelect(data),") a "),1))
         vtblInfo <- separateDBName(getTableNameSlot(data))
+        vColInfo <- c()
+        if(is.TD())
         vColInfo <- sqlQuery(getFLConnection(),
                             paste0("SELECT columnName FROM dbc.columns WHERE \n ",
                                     "columnType = 'CV' AND databaseName= ",
@@ -1406,6 +1408,30 @@ prepareData.lmGeneric <- prepareData.formula
 #' @export
 prepareData.NULL <- prepareData.formula
 
+setMethod("names",signature("FLLinRegr"),
+          function(x) c("coefficients",
+                        "residuals",
+                        "fitted.values",
+                        "FLCoeffStdErr",
+                        "FLCoeffTStat",
+                        "FLCoeffPValue",
+                        "FLCoeffNonZeroDensity",
+                        "FLCoeffCorrelWithRes",
+                        "s",
+                        "call",
+                        "FLLinRegrStats",
+                        "df.residual",
+                        "model",
+                        "x",
+                        "y",
+                        "qr",
+                        "rank",
+                        "terms",
+                        "xlevels",
+                        "assign",
+                        "formula",
+                        "anova"
+                        ))                        
 
 ## move to file lm.R
 #' @export
@@ -1940,11 +1966,6 @@ summary.FLLinRegr <- function(object,
 }
 
 
-
-## Amal: If this generic gets defined here, predict doesn't work for rpart
-#predict<-function(object,newdata,...){
-#	UseMethod("predict",object)
-#}
 
 ## move to file lm.R
 ## Add deep statment, also problem can be of vobsid
