@@ -43,7 +43,7 @@ randomForest.FLTable<-function(data,
                                mtry=2,
                                nodesize=10,
                                maxdepth=5,
-                               cp=0.95,...){ 
+                               cp=0.05,...){ 
     control<-c()
     control<-c(control,
                minsplit=nodesize,
@@ -241,6 +241,8 @@ plot.FLRandomForest<-function(object){ #browser()
 	old.par <- par(mfrow=c(x,ceiling(ntree/x)),
 				   oma = c(0,0,0,0) + 0,
           		   mar = c(0,0,0,0) + 0)
+	rowf<-sqlQuery(getFLConnection(),paste0("Select count(*) from fzzlDecisionTreeMNMD where AnalysisID=",fquote(object$AnalysisID)))
+	if(rowf==length(object$forest)) stop("No splits occured, hence plotting is not possible. Try changing the cp level.")
 	for(i in 1:ntree){
 		class(object$forest[[i]])<-"data.frame"
 		plot.FLrpart(object$forest[[i]])
